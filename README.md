@@ -7,6 +7,7 @@ A BepInEx mod for **Casualties Unknown** that lets you redesign the content-warn
 ---
 
 ## 一个给《Casualties Unknown》的警告页编辑器
+> 劳Expie你终于能回来力（喜）
 
 把启动时那页「本游戏包含暴力…」变成你自己的：
 
@@ -111,7 +112,7 @@ H = 272.2
 
 ## 关于游戏原文 / Original warning text
 
-内容框默认显示的是**游戏当前语言**下的 `other.discretionwarning`，mod 没有写死任何语言。
+内容框默认显示的是**游戏当前语言**下的 `other.discretionwarning`。
 只有你改动它才会写入 `[Text] Override`；点「清除自定义文本」即可恢复跟随游戏语言。
 
 ---
@@ -144,7 +145,7 @@ dotnet build -c Release -p:GameDir="/path/to/Casualties Unknown"
 
 ## 素材说明 / Assets
 
-默认的实验体图案取自 **Demo 构建**的 `splashlogo`（正式版没有这张图），已裁掉右侧 ORO 文字，仅保留实验体，以嵌入资源形式打包。
+默认的Experiment图案取自 **Demo 构建**的 `splashlogo`（正式版没有这张图），仅保留实验体，以嵌入资源形式打包。
 
 ---
 
