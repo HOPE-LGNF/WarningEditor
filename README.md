@@ -8,9 +8,9 @@
 [![BepInEx](docs/badges/bepinex.svg)](https://github.com/BepInEx/BepInEx)
 [![Game](docs/badges/game.svg)](#)
 [![Release](docs/badges/release.svg)](https://github.com/HOPE-LGNF/WarningEditor/releases)
-[![Nexus Mods](docs/badges/nexus.svg)](https://www.nexusmods.com/casualtiesunknown/mods/)
+[![Nexus Mods](docs/badges/nexus.svg)](https://www.nexusmods.com/scavprototype/mods/973)
 
-[**下载**](https://github.com/HOPE-LGNF/WarningEditor/releases) · [预览](#预览--preview) · [安装](#安装--install) · [使用](#使用--usage) · [构建](#构建--build)
+[**GitHub 下载**](https://github.com/HOPE-LGNF/WarningEditor/releases) · [**Nexus Mods**](https://www.nexusmods.com/scavprototype/mods/973) · [预览](#预览--preview) · [安装](#安装--install) · [使用](#使用--usage) · [构建](#构建--build)
 
 </div>
 
