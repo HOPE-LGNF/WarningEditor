@@ -122,10 +122,10 @@ H = 272.2
 
 ```bash
 # Windows
-dotnet build -c Release -p:GameDir="D:\SteamLibrary\steamapps\common\Casualties Unknown"
+dotnet build -c Release -p:GameDir="<你的游戏目录>"
 
 # Linux / WSL
-dotnet build -c Release -p:GameDir="/mnt/e/SteamLibrary/steamapps/common/Casualties Unknown"
+dotnet build -c Release -p:GameDir="/path/to/Casualties Unknown"
 ```
 
 输出在 `bin/Release/net461/WarningEditor.dll`。
@@ -150,4 +150,8 @@ dotnet build -c Release -p:GameDir="/mnt/e/SteamLibrary/steamapps/common/Casualt
 
 ## License
 
-MIT © 2026 HOPE-LGNF
+代码以 **MIT** 发布 © 2026 HOPE-LGNF。
+
+`Assets/` 与 `images/` 下的游戏素材**不在 MIT 范围内**，版权归原作所有，详见 [ASSETS-NOTICE.md](ASSETS-NOTICE.md)。
+
+Code is MIT © 2026 HOPE-LGNF. Game-derived images are **excluded** from the MIT license — see [ASSETS-NOTICE.md](ASSETS-NOTICE.md).

@@ -10,7 +10,7 @@
 
     <!--
       指向你的游戏安装目录。可以用命令行覆盖：
-        dotnet build -c Release -p:GameDir="D:\SteamLibrary\steamapps\common\Casualties Unknown"
+        dotnet build -c Release -p:GameDir="<your game folder>"
     -->
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Casualties Unknown</GameDir>
     <BepDir Condition="'$(BepDir)' == ''">$(GameDir)\BepInEx\core</BepDir>
