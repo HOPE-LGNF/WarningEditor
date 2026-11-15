@@ -1,29 +1,59 @@
+<div align="center">
+
 # Warning Editor
 
-A BepInEx mod for **Casualties Unknown** that lets you redesign the content-warning screen shown at startup: add images, add text, and move or resize every element — with a live in-game editor.
+**把 Experiment 带回警告页，顺便重新排一遍。**
 
-> **English TL;DR** — Open `Settings → Game → Warning Layout → Open Editor`. Drag elements, add images from `images/`, add text boxes, undo with `Ctrl+Z`. Everything is saved to `BepInEx/config/com.hope.cu.warningeditor.cfg` only when you press **Save**.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![BepInEx](https://img.shields.io/badge/BepInEx-5.x-yellow.svg)](https://github.com/BepInEx/BepInEx)
+[![Game](https://img.shields.io/badge/game-Casualties%20Unknown%201.0-green.svg)](https://store.steampowered.com/)
+[![Release](https://img.shields.io/github/v/release/HOPE-LGNF/WarningEditor?color=orange)](https://github.com/HOPE-LGNF/WarningEditor/releases)
+
+[**下载**](https://github.com/HOPE-LGNF/WarningEditor/releases) · [预览](#预览--preview) · [安装](#安装--install) · [使用](#使用--usage) · [构建](#构建--build)
+
+</div>
+
+> 劳Expie你终于能回来力（喜）
+
+![预览](docs/preview/01-result.jpg)
+
+**English TL;DR** — A BepInEx mod for *Casualties Unknown* that turns the startup content-warning screen into a canvas. Add images, add text, drag and resize everything, with a live in-game editor. Open `Settings → Game → Warning Layout → Open Editor`. Nothing is written to disk until you press **Save**.
 
 ---
 
-## 一个给《Casualties Unknown》的警告页编辑器
-> 劳Expie你终于能回来力（喜）
+## 特性 / Features
 
-把启动时那页「本游戏包含暴力…」变成你自己的：
+| | |
+|---|---|
+| 🖼 **图片元素** | 内置 7 张预设，也可以放任意自定义图片 |
+| ✍️ **文本框** | 原生字体，支持整段或**选中选段**染色，横向/纵向对齐 |
+| 🖱 **所见即所得** | 拖拽移动、右下角缩放、方向键 1px 微调、对齐参考线 |
+| 🧭 **对齐工具** | 贴顶/贴底/贴左/贴右/水平居中/垂直居中，一键吸附 |
+| ↩️ **撤回** | `Ctrl+Z`，保留最近 40 步 |
+| 💾 **保存确认** | `Esc` / 取消 会询问是否保存；恢复默认不会偷偷写盘 |
+| 🌐 **中/英界面** | 跟随游戏语言自动切换 |
+| 📝 **可改原文** | 警告文本也能改；留空则跟随游戏语言 |
 
-- 图片元素：内置 7 张预设，支持自定义图片
-- 文本框：原生字体，支持选区染色
-- 拖拽移动、右下角缩放、方向键 1px 微调
-- 对齐参考线 + 六向对齐 + 文本纵横对齐
-- 撤回（`Ctrl+Z`）、恢复默认、保存确认
-- 中/英界面，跟随游戏语言
+---
+
+## 预览 / Preview
+
+| | |
+|:---:|:---:|
+| ![编辑器](docs/preview/02-editor.jpg)<br>**编辑器**：顶部管理元素，左侧改属性 | ![文本框](docs/preview/03-textbox.jpg)<br>**文本框**：内容、字号、颜色、横纵对齐 |
+| ![图片元素](docs/preview/04-image.jpg)<br>**图片元素**：换图、刷新、对齐、复制尺寸 | ![英文界面](docs/preview/05-english.jpg)<br>**英文界面**：跟随游戏语言切换 |
+
+![预览模式](docs/preview/06-preview-mode.jpg)
+
+*预览模式：隐藏所有编辑控件，只看最终效果（`Esc` 退出）。*
 
 ---
 
 ## 安装 / Install
 
-1. 安装 [BepInEx 5](https://github.com/BepInEx/BepInEx)（x64）
-2. 把压缩包解压到游戏根目录：
+需要 [BepInEx 5](https://github.com/BepInEx/BepInEx)（x64）。
+
+把 Release 里的压缩包解压到游戏根目录，合并 `BepInEx` 文件夹即可：
 
 ```
 Casualties Unknown/
@@ -31,7 +61,7 @@ Casualties Unknown/
     ├── plugins/
     │   └── Warning Editor/
     │       ├── WarningEditor.dll
-    │       └── images/
+    │       └── images/          ← 预设图 + 你自己的图
     └── config/
         └── com.hope.cu.warningeditor.cfg   (首次运行自动生成)
 ```
@@ -40,29 +70,30 @@ Casualties Unknown/
 
 ## 使用 / Usage
 
-1. 主菜单 → **设置** → **游戏** → 最下面「警告页布局」→ **打开编辑器**
-2. 顶部切换/添加元素，左侧改属性
-3. 顶部「保存」才会写入配置；`Esc` / 取消 会询问是否保存
+主菜单 → **设置** → **游戏** → 最下面「警告页布局」→ **打开编辑器**
 
 | 操作 | 效果 |
 |---|---|
 | 拖动元素 | 移动 |
 | 拖右下角方块 | 缩放（左上角固定） |
-| `↑↓←→` | 1px |
-| `Shift + ↑↓←→` | 10px |
+| `↑` `↓` `←` `→` | 移动 1px |
+| `Shift` + 方向键 | 移动 10px |
 | `Tab` / `Shift+Tab` | 切换元素 |
 | `Ctrl+Z` | 撤回 |
-| `Esc` | 退出预览 / 取消（会询问保存） |
+| `Esc` | 退出预览 / 取消（会询问是否保存） |
+
+顶部「保存」才会写入配置，其余操作都只改内存。
 
 ---
 
 ## 自定义图片 / Custom images
 
-把 `.png` / `.jpg` 放进 `BepInEx/plugins/Warning Editor/images/`，在编辑器里选中图片元素后点「换图」循环切换，或「刷新图片」重新扫描。
+把 `.png` / `.jpg` 放进 `BepInEx/plugins/Warning Editor/images/`，在编辑器里选中图片元素：
 
-- 透明背景 PNG 效果最好
-- 按原始宽高比显示
-- 加载时使用点采样（适合像素风）
+- **换图**：循环切换文件夹里的图片
+- **刷新图片**：重新扫描文件夹（新放的图不用重启）
+
+建议用透明背景 PNG；插件会按原始宽高比显示，并使用点采样（像素风不会糊）。
 
 ---
 
@@ -87,11 +118,6 @@ H = 300
 [TextBoxes]
 Count = 0
 
-[TextBox0]
-Text = ...
-Colors = 0-5:FF0000
-VAlign = middle
-
 [Text]
 X = 0
 Y = -313
@@ -106,7 +132,7 @@ W = 453.6
 H = 272.2
 ```
 
-`Text` / `Logo` 的锚点是场景固定的（中心 / 底部中心）；图片与文本框的锚点是顶部中心，`Y` 为负值向下。
+`Text` / `Logo` 的锚点由场景固定（中心 / 底部中心）；图片与文本框的锚点是顶部中心，`Y` 为负值向下。
 
 ---
 
@@ -118,8 +144,6 @@ H = 272.2
 ---
 
 ## 构建 / Build
-
-需要 .NET SDK（任意能编译 net461 的版本）。
 
 ```bash
 # Windows
@@ -137,22 +161,22 @@ dotnet build -c Release -p:GameDir="/path/to/Casualties Unknown"
 
 - `PreRunScript.Start` Postfix：应用布局、创建图片/文本元素
 - `SettingsMenu.SelectTab(Game)` Postfix：在游戏设置列表底部插入入口
-- 编辑器使用独立的高排序 Canvas；按钮用矩形命中手动处理，不依赖 uGUI 射线层级
+- 编辑器使用独立高排序 Canvas；按钮用矩形命中手动处理，不依赖 uGUI 射线层级
 - 文字颜色以「纯文本 + 颜色区间」保存，渲染时才拼 `<color>` 标签，不会切坏标签
-- 撤回基于配置快照（元素位置/尺寸/图片/文本/颜色）
+- 撤回基于配置快照（位置/尺寸/图片/文本/颜色）
 
 ---
 
-## 素材说明 / Assets
+## 素材与版权 / Assets
 
-默认的Experiment图案取自 **Demo 构建**的 `splashlogo`（正式版没有这张图），仅保留实验体，以嵌入资源形式打包。
+默认的 Experiment 图案取自 **Demo 构建**的 `splashlogo`（正式版没有这张图），仅保留实验体，以嵌入资源形式打包。
+
+`Assets/` 与 `images/` 下的游戏素材**不在 MIT 范围内**，版权归原作所有，详见 [ASSETS-NOTICE.md](ASSETS-NOTICE.md)。
 
 ---
 
 ## License
 
 代码以 **MIT** 发布 © 2026 HOPE-LGNF。
-
-`Assets/` 与 `images/` 下的游戏素材**不在 MIT 范围内**，版权归原作所有，详见 [ASSETS-NOTICE.md](ASSETS-NOTICE.md)。
 
 Code is MIT © 2026 HOPE-LGNF. Game-derived images are **excluded** from the MIT license — see [ASSETS-NOTICE.md](ASSETS-NOTICE.md).
