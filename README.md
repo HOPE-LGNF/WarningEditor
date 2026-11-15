@@ -4,10 +4,11 @@
 
 **把 Experiment 带回警告页，顺便重新排一遍。**
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![BepInEx](https://img.shields.io/badge/BepInEx-5.x-yellow.svg)](https://github.com/BepInEx/BepInEx)
-[![Game](https://img.shields.io/badge/game-Casualties%20Unknown%201.0-green.svg)](https://store.steampowered.com/)
-[![Release](https://img.shields.io/github/v/release/HOPE-LGNF/WarningEditor?color=orange)](https://github.com/HOPE-LGNF/WarningEditor/releases)
+[![License](docs/badges/license.svg)](LICENSE)
+[![BepInEx](docs/badges/bepinex.svg)](https://github.com/BepInEx/BepInEx)
+[![Game](docs/badges/game.svg)](#)
+[![Release](docs/badges/release.svg)](https://github.com/HOPE-LGNF/WarningEditor/releases)
+[![Nexus Mods](docs/badges/nexus.svg)](https://www.nexusmods.com/casualtiesunknown/mods/)
 
 [**下载**](https://github.com/HOPE-LGNF/WarningEditor/releases) · [预览](#预览--preview) · [安装](#安装--install) · [使用](#使用--usage) · [构建](#构建--build)
 
@@ -15,7 +16,7 @@
 
 > 劳Expie你终于能回来力（喜）
 
-![预览](docs/preview/01-result.jpg)
+![预览](docs/preview/00-hero.jpg)
 
 **English TL;DR** — A BepInEx mod for *Casualties Unknown* that turns the startup content-warning screen into a canvas. Add images, add text, drag and resize everything, with a live in-game editor. Open `Settings → Game → Warning Layout → Open Editor`. Nothing is written to disk until you press **Save**.
 
@@ -46,6 +47,10 @@
 ![预览模式](docs/preview/06-preview-mode.jpg)
 
 *预览模式：隐藏所有编辑控件，只看最终效果（`Esc` 退出）。*
+
+![自定义示例](docs/preview/01-result.jpg)
+
+*自定义示例：换成自己的角色图 + 文本，警告原文仍可保留。*
 
 ---
 
