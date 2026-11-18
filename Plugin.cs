@@ -17,7 +17,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.8.1";
+        public const string PluginVersion = "1.8.2";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -111,7 +111,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.8.1 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.8.2 loaded. images=" + ImagesDir);
         }
 
         internal static Vector4 GetFixed(string id)
@@ -518,6 +518,21 @@ namespace WarningEditor
         }
     }
 
+    // ================= 热键兜底 =================
+    public class WarningEditorHotkey : MonoBehaviour
+    {
+        private void Update()
+        {
+            if (!Input.GetKeyDown(KeyCode.F8)) return;
+            if (SettingsMenu.instance != null) return;
+            var pre = PreRunScript.instance;
+            if (pre == null || pre.contentWarning == null) return;
+            if (LayoutEditor.IsOpen) return;
+            Plugin.Log.LogInfo("F8: 打开布局编辑器");
+            LayoutEditor.Open(pre.contentWarning.transform);
+        }
+    }
+
     [HarmonyPatch(typeof(PreRunScript), "Start")]
     internal static class PreRunPatch
     {
@@ -527,6 +542,10 @@ namespace WarningEditor
             if (!Plugin.CfgEnabled.Value) return;
             var w = __instance.contentWarning;
             if (w == null) { Plugin.Log.LogWarning("contentWarning 为空"); return; }
+
+            if (__instance.gameObject.GetComponent<WarningEditorHotkey>() == null)
+                __instance.gameObject.AddComponent<WarningEditorHotkey>();
+
             Plugin.ApplyLayout(w.transform);
         }
     }
@@ -566,8 +585,9 @@ namespace WarningEditor
                 }
 
                 var rt = row.GetComponent<RectTransform>();
-                float bottom = 0f;
                 var list = AccessTools.FieldRefAccess<SettingsMenu, List<GameObject>>("spawnedSettings")(__instance);
+
+                float top = 0f;
                 if (list != null)
                 {
                     foreach (var g in list)
@@ -575,11 +595,22 @@ namespace WarningEditor
                         if (g == null) continue;
                         var r = g.GetComponent<RectTransform>();
                         if (r == null) continue;
-                        bottom = Mathf.Min(bottom, r.anchoredPosition.y - r.sizeDelta.y * 0.5f);
+                        top = Mathf.Min(top, r.anchoredPosition.y - r.sizeDelta.y * 0.5f);
                     }
                     list.Add(row);
                 }
-                rt.anchoredPosition = new Vector2(0f, bottom - rt.sizeDelta.y * 0.5f);
+
+                // 原版在 SelectTab 末尾把 content 高度设成 num；我们是在之后追加的，
+                // 不补高度的话这一行会落在内容矩形外，被列表裁掉。
+                float used = -top;
+                rt.anchoredPosition = new Vector2(0f, top - rt.sizeDelta.y * 0.5f);
+
+                var content = __instance.content;
+                if (content != null)
+                {
+                    content.sizeDelta = new Vector2(content.sizeDelta.x, used + rt.sizeDelta.y);
+                    Plugin.Log.LogInfo($"设置行已插入: y={rt.anchoredPosition.y:0} contentH={content.sizeDelta.y:0} (原 {used:0})");
+                }
             }
             catch (Exception e)
             {

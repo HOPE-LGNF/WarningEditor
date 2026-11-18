@@ -73,6 +73,8 @@ namespace WarningEditor
         private readonly List<RectTransform> _inputs = new List<RectTransform>();
         private BtnEntry _pressed;
 
+        internal static bool IsOpen => _instance != null;
+
         internal float ScaleFactor => _canvas != null ? _canvas.scaleFactor : 1f;
         internal int ImageCount => Mathf.Max(0, Plugin.CfgCount.Value);
         internal int TextCount => Mathf.Max(0, Plugin.CfgTextCount.Value);

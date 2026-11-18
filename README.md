@@ -1,108 +1,114 @@
-<div align="center">
+# 警告页编辑器 · Warning Editor
 
-# Warning Editor
+自定义 Casualties Unknown 启动时的内容警告页（`Canvas/Warning`）。
 
-**把 Experiment 带回警告页，顺便重新排一遍。**
+- **图片元素**：内置 7 张预设，支持自定义图片
+- **文本框**：原生字体，支持富文本与「选中染色」
+- **复制大小 / 粘贴大小**
+- **对齐参考线**：拖动时自动吸附并显示参考线
+- 画布坐标 / 尺寸 **手动输入**
+- **预览模式**：一键隐藏所有编辑控件（`Esc` 或左上角按钮退出）
+- **中/英界面**：跟随游戏语言自动切换
+- **撤回**：`Ctrl+Z` 或面板「撤回」
+- **保存确认**：`Esc` / 取消 会询问是否保存
+- **对齐**：贴顶/贴底/贴左/贴右/水平居中/垂直居中
+- **纵向对齐**：文本框上/中/下
+- **可编辑游戏原文**：警告文本也能改内容
+- 顶部管理元素，左侧调整属性
 
-[![License](docs/badges/license.svg)](LICENSE)
-[![BepInEx](docs/badges/bepinex.svg)](https://github.com/BepInEx/BepInEx)
-[![Game](docs/badges/game.svg)](#)
-[![Release](docs/badges/release.svg)](https://github.com/HOPE-LGNF/WarningEditor/releases)
-[![Nexus Mods](docs/badges/nexus.svg)](https://www.nexusmods.com/scavprototype/mods/973)
-
-[**GitHub 下载**](https://github.com/HOPE-LGNF/WarningEditor/releases) · [**Nexus Mods**](https://www.nexusmods.com/scavprototype/mods/973) · [预览](#预览--preview) · [安装](#安装--install) · [使用](#使用--usage) · [构建](#构建--build)
-
-</div>
-
-> 劳Expie你终于能回来力（喜）
-
-![预览](docs/preview/00-hero.jpg)
-
-**English TL;DR** — A BepInEx mod for *Casualties Unknown* that turns the startup content-warning screen into a canvas. Add images, add text, drag and resize everything, with a live in-game editor. Open `Settings → Game → Warning Layout → Open Editor`. Nothing is written to disk until you press **Save**.
-
----
-
-## 特性 / Features
-
-| | |
-|---|---|
-| 🖼 **图片元素** | 内置 7 张预设，也可以放任意自定义图片 |
-| ✍️ **文本框** | 原生字体，支持整段或**选中选段**染色，横向/纵向对齐 |
-| 🖱 **所见即所得** | 拖拽移动、右下角缩放、方向键 1px 微调、对齐参考线 |
-| 🧭 **对齐工具** | 贴顶/贴底/贴左/贴右/水平居中/垂直居中，一键吸附 |
-| ↩️ **撤回** | `Ctrl+Z`，保留最近 40 步 |
-| 💾 **保存确认** | `Esc` / 取消 会询问是否保存；恢复默认不会偷偷写盘 |
-| 🌐 **中/英界面** | 跟随游戏语言自动切换 |
-| 📝 **可改原文** | 警告文本也能改；留空则跟随游戏语言 |
+- 插件 GUID：`com.hope.cu.warningeditor`
+- 版本：**1.8.2**
+- 依赖：BepInEx 5（5.4.23.6 验证）
+- 目标：Casualties Unknown 1.0
 
 ---
 
-## 预览 / Preview
-
-| | |
-|:---:|:---:|
-| ![编辑器](docs/preview/02-editor.jpg)<br>**编辑器**：顶部管理元素，左侧改属性 | ![文本框](docs/preview/03-textbox.jpg)<br>**文本框**：内容、字号、颜色、横纵对齐 |
-| ![图片元素](docs/preview/04-image.jpg)<br>**图片元素**：换图、刷新、对齐、复制尺寸 | ![英文界面](docs/preview/05-english.jpg)<br>**英文界面**：跟随游戏语言切换 |
-
-![预览模式](docs/preview/06-preview-mode.jpg)
-
-*预览模式：隐藏所有编辑控件，只看最终效果（`Esc` 退出）。*
-
-![自定义示例](docs/preview/01-result.jpg)
-
-*自定义示例：换成自己的角色图 + 文本，警告原文仍可保留。*
-
----
-
-## 安装 / Install
-
-需要 [BepInEx 5](https://github.com/BepInEx/BepInEx)（x64）。
-
-把 Release 里的压缩包解压到游戏根目录，合并 `BepInEx` 文件夹即可：
+## 安装
 
 ```
-Casualties Unknown/
-└── BepInEx/
-    ├── plugins/
-    │   └── Warning Editor/
-    │       ├── WarningEditor.dll
-    │       └── images/          ← 预设图 + 你自己的图
-    └── config/
-        └── com.hope.cu.warningeditor.cfg   (首次运行自动生成)
+BepInEx/plugins/Warning Editor/
+├── WarningEditor.dll
+└── images/
+    ├── warning_experiment.png
+    ├── char1.png / char2.png / char3.png
+    └── dune_trim.png / experiment_trim.png / milky_trim.png
 ```
+
+从旧版（`Warning Experiment`）升级时，配置会自动迁移。
 
 ---
 
-## 使用 / Usage
+## 界面
 
-主菜单 → **设置** → **游戏** → 最下面「警告页布局」→ **打开编辑器**
+```
+┌──────────────────────────────────────────────────────────┐
+│ 警告页编辑器 [文本][Logo][图0]…  +图片 +文本 预览 保存 取消 │  ← 顶部：管理
+├───────────┬──────────────────────────────────────────────┤
+│ X / Y     │                                              │
+│ W / H     │                                              │
+│ 复制/粘贴 │              画布（1920×1080）                │
+│ 置顶/对齐 │                                              │
+│ 文本属性  │                                              │
+└───────────┴──────────────────────────────────────────────┘
+```
 
-| 操作 | 效果 |
+- 顶部按钮切换要编辑的元素
+- 左侧 X/Y 是**画布坐标**（左上原点，0–1920 / 0–1080），不是 anchoredPosition
+- 「预览」隐藏所有编辑控件；按 `Esc` 或点左上角按钮返回
+
+### 快捷键
+
+| 键 | 作用 |
 |---|---|
-| 拖动元素 | 移动 |
-| 拖右下角方块 | 缩放（左上角固定） |
-| `↑` `↓` `←` `→` | 移动 1px |
-| `Shift` + 方向键 | 移动 10px |
+| `↑↓←→` | 移动 1px |
+| `Shift + ↑↓←→` | 移动 10px |
 | `Tab` / `Shift+Tab` | 切换元素 |
-| `Ctrl+Z` | 撤回 |
-| `Esc` | 退出预览 / 取消（会询问是否保存） |
-
-顶部「保存」才会写入配置，其余操作都只改内存。
+| `Esc` | 预览中退出预览；否则取消（输入框聚焦时不触发） |
 
 ---
 
-## 自定义图片 / Custom images
+## 文本框
 
-把 `.png` / `.jpg` 放进 `BepInEx/plugins/Warning Editor/images/`，在编辑器里选中图片元素：
+顶部「+ 文本」添加，选中后在左侧：
 
-- **换图**：循环切换文件夹里的图片
-- **刷新图片**：重新扫描文件夹（新放的图不用重启）
+- **内容**：多行输入
+- **字号**：直接输入
+- **颜色**：6 个色块。**先在内容框里选中一段文字，再点色块，只给选中的那段上色**；不选则整段染色
+- 颜色以「纯文本 + 颜色区间」保存（`0-5:FF0000`），渲染时才合成 `<color>` 标签，不会切坏标签
+- **对齐**：左 / 中 / 右
 
-建议用透明背景 PNG；插件会按原始宽高比显示，并使用点采样（像素风不会糊）。
+字体从游戏的警告文本克隆，和原版一致。染色写入 `<color=#RRGGBB>` 富文本。
 
 ---
 
-## 配置 / Config
+## 复制大小
+
+选中元素 → 左侧「复制大小」→ 选另一个 → 「粘贴大小」。只复制尺寸，不复制位置与内容。
+
+---
+
+## 对齐参考线
+
+拖动时，元素的**左/中/右**或**上/中/下**接近下列位置会自动吸附并显示粉色参考线：
+
+- 画布中线（960 / 540）
+- 画布四边（0 / 1920 / 0 / 1080）
+- 其他元素的边缘与中心
+
+阈值 6px。
+
+---
+
+## 图片
+
+- 顶部「+ 图片」新建元素
+- 选中图片元素后，左侧「换图」循环切换 `images/` 里的图片
+- 「刷新图片」重新扫描文件夹（新放进来的图片不用重启）
+- 自定义图片：把 `.png` / `.jpg` 放进 `BepInEx/plugins/Warning Editor/images/`
+
+---
+
+## 配置
 
 `BepInEx/config/com.hope.cu.warningeditor.cfg`
 
@@ -128,7 +134,6 @@ X = 0
 Y = -313
 W = 1782
 H = 616
-Override =        ; 留空 = 跟随游戏语言
 
 [Logo]
 X = 0
@@ -137,51 +142,29 @@ W = 453.6
 H = 272.2
 ```
 
-`Text` / `Logo` 的锚点由场景固定（中心 / 底部中心）；图片与文本框的锚点是顶部中心，`Y` 为负值向下。
+文本框会生成 `[TextBox0]`、`[TextBox1]`…，字段：`Text`（纯文本）/ `Colors`（颜色区间）/ `Color`（整体基色）/ `Align / FontSize / X / Y / W / H`。
 
 ---
 
-## 关于游戏原文 / Original warning text
+## 关于游戏原文
 
-内容框默认显示的是**游戏当前语言**下的 `other.discretionwarning`。
-只有你改动它才会写入 `[Text] Override`；点「清除自定义文本」即可恢复跟随游戏语言。
+「文本」内容框默认显示的是**游戏当前语言**下的原文（`other.discretionwarning`），mod 没有写死任何语言。
+只有你**改动**了它才会写入 `[Text] Override`；点「清除自定义文本」即可恢复跟随游戏语言。
 
----
+## 故障排查 / Troubleshooting
 
-## 构建 / Build
+**设置里找不到「警告页布局」？**
 
-```bash
-# Windows
-dotnet build -c Release -p:GameDir="<你的游戏目录>"
+1. 确认 `BepInEx/LogOutput.log` 里有 `WarningEditor 1.8.2 loaded.`
+   - 没有 → 插件没被加载（BepInEx 没装好 / DLL 位置不对 / 架构不对）
+2. 有加载但菜单里没有 → 按 **F8** 可以直接打开编辑器（主菜单）
+3. 把 `LogOutput.log` 发给作者，里面会有 `设置行已插入: y=... contentH=...`
 
-# Linux / WSL
-dotnet build -c Release -p:GameDir="/path/to/Casualties Unknown"
-```
+**1.8.2 修复**：入口行当初没把内容高度算进去，列表较长时会被裁到可视区外。
 
-输出在 `bin/Release/net461/WarningEditor.dll`。
+## 已知限制
 
----
-
-## 实现 / How it works
-
-- `PreRunScript.Start` Postfix：应用布局、创建图片/文本元素
-- `SettingsMenu.SelectTab(Game)` Postfix：在游戏设置列表底部插入入口
-- 编辑器使用独立高排序 Canvas；按钮用矩形命中手动处理，不依赖 uGUI 射线层级
-- 文字颜色以「纯文本 + 颜色区间」保存，渲染时才拼 `<color>` 标签，不会切坏标签
-- 撤回基于配置快照（位置/尺寸/图片/文本/颜色）
-
----
-
-## 素材与版权 / Assets
-
-默认的 Experiment 图案取自 **Demo 构建**的 `splashlogo`（正式版没有这张图），仅保留实验体，以嵌入资源形式打包。
-
-`Assets/` 与 `images/` 下的游戏素材**不在 MIT 范围内**，版权归原作所有，详见 [ASSETS-NOTICE.md](ASSETS-NOTICE.md)。
-
----
-
-## License
-
-代码以 **MIT** 发布 © 2026 HOPE-LGNF。
-
-Code is MIT © 2026 HOPE-LGNF. Game-derived images are **excluded** from the MIT license — see [ASSETS-NOTICE.md](ASSETS-NOTICE.md).
+- 文本框锚点固定为顶部中心
+- 连续染色会嵌套富文本标签（可在配置里手动清理）
+- 编辑器只在主菜单（PreGen）可用
+- 改警告文本尺寸会改变自动换行（字号不开放）
