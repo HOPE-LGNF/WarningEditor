@@ -17,7 +17,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.8.2";
+        public const string PluginVersion = "1.8.3";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -26,6 +26,10 @@ namespace WarningEditor
         internal static ConfigEntry<int> CfgCount;
         internal static ConfigEntry<int> CfgTextCount;
         internal static ConfigEntry<string> CfgTextOverride;
+        internal static ConfigEntry<string> CfgHotkeyKey;
+        internal static ConfigEntry<bool> CfgHotkeyCtrl;
+        internal static ConfigEntry<bool> CfgHotkeyShift;
+        internal static ConfigEntry<bool> CfgHotkeyAlt;
 
         private static readonly Dictionary<int, ConfigEntry<string>> _txtText =
             new Dictionary<int, ConfigEntry<string>>();
@@ -102,6 +106,12 @@ namespace WarningEditor
                 Fixed[id + ".H"] = Config.Bind(id, "H", d.w, "sizeDelta.y");
             }
 
+            CfgHotkeyKey = Config.Bind("Hotkey", "Key", "F8",
+                "打开编辑器的按键（KeyCode 名称，例如 F8 / F10 / None 禁用）");
+            CfgHotkeyCtrl = Config.Bind("Hotkey", "Ctrl", true, "是否要求按住 Ctrl");
+            CfgHotkeyShift = Config.Bind("Hotkey", "Shift", true, "是否要求按住 Shift");
+            CfgHotkeyAlt = Config.Bind("Hotkey", "Alt", false, "是否要求按住 Alt");
+
             CfgTextOverride = Config.Bind("Text", "Override", "", "覆盖警告文本内容（留空则用游戏原文）");
             CfgTextCount = Config.Bind("TextBoxes", "Count", 0, "文本框数量");
             if (CfgTextCount.Value < 0) CfgTextCount.Value = 0;
@@ -111,7 +121,8 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.8.2 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.8.3 loaded. images=" + ImagesDir);
+            Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
         internal static Vector4 GetFixed(string id)
@@ -523,12 +534,26 @@ namespace WarningEditor
     {
         private void Update()
         {
-            if (!Input.GetKeyDown(KeyCode.F8)) return;
+            var keyStr = Plugin.CfgHotkeyKey.Value;
+            if (string.IsNullOrWhiteSpace(keyStr) ||
+                keyStr.Equals("none", System.StringComparison.OrdinalIgnoreCase)) return;
+            if (!System.Enum.TryParse<KeyCode>(keyStr, true, out var key)) return;
+
+            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+
+            // 精确匹配修饰键，避免"按住 Ctrl 时误触"或与别的 mod 抢同一个裸键
+            if (ctrl != Plugin.CfgHotkeyCtrl.Value) return;
+            if (shift != Plugin.CfgHotkeyShift.Value) return;
+            if (alt != Plugin.CfgHotkeyAlt.Value) return;
+
+            if (!Input.GetKeyDown(key)) return;
             if (SettingsMenu.instance != null) return;
             var pre = PreRunScript.instance;
             if (pre == null || pre.contentWarning == null) return;
             if (LayoutEditor.IsOpen) return;
-            Plugin.Log.LogInfo("F8: 打开布局编辑器");
+            Plugin.Log.LogInfo("热键: 打开布局编辑器");
             LayoutEditor.Open(pre.contentWarning.transform);
         }
     }

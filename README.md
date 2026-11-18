@@ -17,7 +17,7 @@
 - 顶部管理元素，左侧调整属性
 
 - 插件 GUID：`com.hope.cu.warningeditor`
-- 版本：**1.8.2**
+- 版本：**1.8.3**
 - 依赖：BepInEx 5（5.4.23.6 验证）
 - 目标：Casualties Unknown 1.0
 
@@ -157,8 +157,18 @@ H = 272.2
 
 1. 确认 `BepInEx/LogOutput.log` 里有 `WarningEditor 1.8.2 loaded.`
    - 没有 → 插件没被加载（BepInEx 没装好 / DLL 位置不对 / 架构不对）
-2. 有加载但菜单里没有 → 按 **F8** 可以直接打开编辑器（主菜单）
+2. 有加载但菜单里没有 → 按 **Ctrl+Shift+F8** 可以直接打开编辑器（主菜单）
 3. 把 `LogOutput.log` 发给作者，里面会有 `设置行已插入: y=... contentH=...`
+
+**1.8.3**：热键改为可配置，默认 `Ctrl+Shift+F8`，避免和其他 mod 的 F8 撞车。
+
+```ini
+[Hotkey]
+Key = F8          ; KeyCode 名称；填 None 禁用
+Ctrl = true
+Shift = true
+Alt = false
+```
 
 **1.8.2 修复**：入口行当初没把内容高度算进去，列表较长时会被裁到可视区外。
 
