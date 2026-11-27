@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.12.0";
+        public const string PluginVersion = "1.12.1";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -126,7 +126,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.12.0 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.12.1 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -230,6 +230,21 @@ namespace WarningEditor
             File.WriteAllText(LayoutPath, json);   // 保留固定路径，兼容旧流程
             Log.LogInfo("布局已导出: " + path);
             return path;
+        }
+
+        internal static bool DeleteLayout(string path, out string error)
+        {
+            error = null;
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = e.Message;
+                return false;
+            }
         }
 
         internal static string[] ListLayouts()

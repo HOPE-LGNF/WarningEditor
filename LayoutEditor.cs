@@ -1214,11 +1214,7 @@ namespace WarningEditor
             for (int i = 0; i < per && start + i < _layoutFiles.Length; i++)
             {
                 var path = _layoutFiles[start + i];
-                string name = Path.GetFileNameWithoutExtension(path);
-                string when = File.GetLastWriteTime(path).ToString("MM-dd HH:mm");
-                MakeButton(_modal.transform, name + "   " + when,
-                           new Vector2(24f, -58f - i * 46f), new Vector2(712f, 38f),
-                           () => TryImport(path), true);
+                MakeLayoutRow(path, -58f - i * 46f);
             }
 
             float fy = -58f - per * 46f - 6f;
@@ -1233,6 +1229,49 @@ namespace WarningEditor
                        new Vector2(300f, fy), new Vector2(200f, 32f), ShowPathDialog, true);
             MakeButton(_modal.transform, L.T("取消", "Cancel"),
                        new Vector2(620f, fy), new Vector2(116f, 32f), CloseDialog, true);
+        }
+
+        private void MakeLayoutRow(string path, float y)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            string when = File.GetLastWriteTime(path).ToString("MM-dd HH:mm");
+
+            var row = MakeButton(_modal.transform, "", new Vector2(24f, y), new Vector2(712f, 38f),
+                                 () => TryImport(path), true);
+            if (_modalButtons.Count > 0) _modalButtons[_modalButtons.Count - 1].name = "布局: " + name;
+
+            var label = MakeLabel(row.transform, name + "   " + when, 15,
+                                  new Vector2(12f, -4f), new Vector2(636f, 30f));
+            label.alignment = TextAlignmentOptions.Left;
+            label.enableWordWrapping = false;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+
+            var del = MakeButton(row.transform, "×", new Vector2(668f, -2f), new Vector2(36f, 34f),
+                                 () => ConfirmDeleteLayout(path), true);
+            var di = del.GetComponent<Image>();
+            if (di != null) di.color = new Color(0.38f, 0.10f, 0.12f, 1f);
+        }
+
+        private void ConfirmDeleteLayout(string path)
+        {
+            string name = Path.GetFileName(path);
+            ShowDialog((L.Zh ? "删除 " + name + "？此操作不可恢复。"
+                             : "Delete " + name + "? This cannot be undone."),
+                new DlgBtn(L.T("删除", "Delete"), () =>
+                {
+                    CloseDialog();
+                    if (Plugin.DeleteLayout(path, out var err))
+                    {
+                        _layoutFiles = Plugin.ListLayouts();
+                        RenderLayoutList();
+                    }
+                    else
+                    {
+                        ShowDialog(L.T("删除失败: ", "Delete failed: ") + err,
+                                   new DlgBtn("OK", RenderLayoutList));
+                    }
+                }),
+                new DlgBtn(L.T("取消", "Cancel"), RenderLayoutList));
         }
 
         private void ShowPathDialog()
