@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.11.0";
+        public const string PluginVersion = "1.12.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -126,7 +126,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.11.0 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.12.0 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -182,8 +182,9 @@ namespace WarningEditor
         // ---------------- 布局导入 / 导出 ----------------
         internal static string LayoutDir => Path.Combine(BepInEx.Paths.ConfigPath, "WarningEditor");
         internal static string LayoutPath => Path.Combine(LayoutDir, "layout.json");
+        internal static string LayoutsDir => Path.Combine(LayoutDir, "layouts");
 
-        internal static string ExportLayout()
+        internal static string ExportLayout(string name = null)
         {
             var d = new LayoutDto();
             d.images = CfgCount.Value;
@@ -221,23 +222,63 @@ namespace WarningEditor
             d.logoRect = new RectDto { x = lr.x, y = lr.y, w = lr.z, h = lr.w };
             d.textOverride = CfgTextOverride.Value;
 
-            Directory.CreateDirectory(LayoutDir);
-            File.WriteAllText(LayoutPath, JsonUtility.ToJson(d, true));
-            Log.LogInfo("布局已导出: " + LayoutPath);
-            return LayoutPath;
+            Directory.CreateDirectory(LayoutsDir);
+            if (string.IsNullOrEmpty(name)) name = "layout-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string json = JsonUtility.ToJson(d, true);
+            string path = Path.Combine(LayoutsDir, name + ".json");
+            File.WriteAllText(path, json);
+            File.WriteAllText(LayoutPath, json);   // 保留固定路径，兼容旧流程
+            Log.LogInfo("布局已导出: " + path);
+            return path;
+        }
+
+        internal static string[] ListLayouts()
+        {
+            try
+            {
+                Directory.CreateDirectory(LayoutsDir);
+                var files = Directory.GetFiles(LayoutsDir, "*.json");
+                Array.Sort(files, (a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
+                return files;
+            }
+            catch (Exception e)
+            {
+                Log.LogError("扫描布局失败: " + e.Message);
+                return new string[0];
+            }
+        }
+
+        internal static bool PeekLayout(string path, out int images, out int texts, out string error)
+        {
+            images = 0; texts = 0; error = null;
+            try
+            {
+                var fi = new FileInfo(path);
+                if (!fi.Exists) { error = "文件不存在"; return false; }
+                if (fi.Length > 4 * 1024 * 1024) { error = "文件过大（>4MB），已拒绝"; return false; }
+                var d = JsonUtility.FromJson<LayoutDto>(File.ReadAllText(path));
+                if (d == null) { error = "JSON 解析失败"; return false; }
+                images = Mathf.Max(0, d.images);
+                texts = Mathf.Max(0, d.texts);
+                return true;
+            }
+            catch (Exception e) { error = e.Message; return false; }
         }
 
         internal static bool ImportLayout(Transform warning, out string error)
+            => ImportLayoutFrom(LayoutPath, warning, out error);
+
+        internal static bool ImportLayoutFrom(string path, Transform warning, out string error)
         {
             error = null;
-            if (!File.Exists(LayoutPath)) { error = "找不到 " + LayoutPath; return false; }
+            if (!File.Exists(path)) { error = "找不到 " + path; return false; }
 
             LayoutDto d;
-            try { d = JsonUtility.FromJson<LayoutDto>(File.ReadAllText(LayoutPath)); }
+            try { d = JsonUtility.FromJson<LayoutDto>(File.ReadAllText(path)); }
             catch (Exception e) { error = "JSON 解析失败: " + e.Message; return false; }
             if (d == null) { error = "JSON 解析失败"; return false; }
 
-            CfgCount.Value = Mathf.Max(0, d.images);
+            CfgCount.Value = Mathf.Clamp(d.images, 0, 100);
             for (int i = 0; i < CfgCount.Value; i++)
             {
                 ImgDto it = i < d.img.Count ? d.img[i] : null;
@@ -251,7 +292,7 @@ namespace WarningEditor
                 EB(i, "PingSkip", true, "").Value = it.pingSkip;
             }
 
-            CfgTextCount.Value = Mathf.Max(0, d.texts);
+            CfgTextCount.Value = Mathf.Clamp(d.texts, 0, 100);
             for (int i = 0; i < CfgTextCount.Value; i++)
             {
                 TxtDto it = i < d.txt.Count ? d.txt[i] : null;
@@ -271,7 +312,7 @@ namespace WarningEditor
             SyncImages(warning);
             SyncTexts(warning);
             ApplyTextOverride(warning);
-            Log.LogInfo("布局已导入: " + LayoutPath);
+            Log.LogInfo("布局已导入: " + path);
             return true;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -666,7 +667,7 @@ namespace WarningEditor
             y += 34f;
 
             MakeButton(p, L.T("导出布局", "Export"), new Vector2(14f, -y), new Vector2(126f, 28f), DoExport);
-            MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), DoImport);
+            MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), ShowLayoutList);
             y += 34f;
 
             var resetBtn = MakeButton(p, L.T("恢复默认布局", "Reset Layout"),
@@ -1138,7 +1139,12 @@ namespace WarningEditor
 
         private void CloseDialog()
         {
-            if (_modal != null) Destroy(_modal);
+            if (_modal != null)
+            {
+                var m = _modal.transform;
+                _inputs.RemoveAll(r => r == null || r.IsChildOf(m));
+                Destroy(_modal);
+            }
             _modal = null;
             _modalOpen = false;
             _modalButtons.Clear();
@@ -1152,12 +1158,15 @@ namespace WarningEditor
                 new DlgBtn(L.T("取消", "Cancel"), CloseDialog));
         }
 
+        private string[] _layoutFiles = new string[0];
+        private int _layoutPage;
+
         private void DoExport()
         {
             try
             {
                 string path = Plugin.ExportLayout();
-                _status = L.T("已导出 layout.json", "Exported layout.json");
+                _status = L.T("已导出 ", "Exported ") + Path.GetFileName(path);
                 Plugin.Log.LogInfo("导出路径: " + path);
             }
             catch (Exception e)
@@ -1167,27 +1176,138 @@ namespace WarningEditor
             }
         }
 
-        private void DoImport()
+        private void ShowLayoutList()
         {
-            ShowDialog(L.T("导入会覆盖当前布局，继续？", "Import will overwrite the current layout. Continue?"),
-                new DlgBtn(L.T("导入", "Import"), () =>
-                {
-                    CloseDialog();
-                    PushUndo();
-                    if (Plugin.ImportLayout(_warning, out var err))
-                    {
-                        _status = L.T("已导入", "Imported");
-                        Rebuild();
-                        Select("Text");
-                    }
-                    else
-                    {
-                        _status = L.T("导入失败: ", "Import failed: ") + err;
-                        Plugin.Log.LogError(_status);
-                        RefreshPanel();
-                    }
-                }),
-                new DlgBtn(L.T("取消", "Cancel"), CloseDialog));
+            _layoutFiles = Plugin.ListLayouts();
+            _layoutPage = 0;
+            RenderLayoutList();
+        }
+
+        private void RenderLayoutList()
+        {
+            CloseDialog();
+            _modalOpen = true;
+
+            _modal = new GameObject("ModalList", typeof(RectTransform), typeof(Image));
+            _modal.transform.SetParent(_root, false);
+            var rt = _modal.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(760f, 560f);
+            _modal.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.12f, 1f);
+
+            MakeLabel(_modal.transform, L.T("导入布局", "Import layout") + "  (" + _layoutFiles.Length + ")",
+                      20, new Vector2(24f, -16f), new Vector2(500f, 28f));
+
+            if (_layoutFiles.Length == 0)
+            {
+                MakeLabel(_modal.transform, L.T("还没有导出过布局。", "No exported layouts yet."),
+                          15, new Vector2(24f, -70f), new Vector2(712f, 24f));
+            }
+
+            int per = 8;
+            int pages = Mathf.Max(1, Mathf.CeilToInt(_layoutFiles.Length / (float)per));
+            _layoutPage = Mathf.Clamp(_layoutPage, 0, pages - 1);
+            int start = _layoutPage * per;
+
+            for (int i = 0; i < per && start + i < _layoutFiles.Length; i++)
+            {
+                var path = _layoutFiles[start + i];
+                string name = Path.GetFileNameWithoutExtension(path);
+                string when = File.GetLastWriteTime(path).ToString("MM-dd HH:mm");
+                MakeButton(_modal.transform, name + "   " + when,
+                           new Vector2(24f, -58f - i * 46f), new Vector2(712f, 38f),
+                           () => TryImport(path), true);
+            }
+
+            float fy = -58f - per * 46f - 6f;
+            if (_layoutPage > 0)
+                MakeButton(_modal.transform, "◀", new Vector2(24f, fy), new Vector2(60f, 32f),
+                           () => { _layoutPage--; RenderLayoutList(); }, true);
+            if (_layoutPage < pages - 1)
+                MakeButton(_modal.transform, "▶", new Vector2(90f, fy), new Vector2(60f, 32f),
+                           () => { _layoutPage++; RenderLayoutList(); }, true);
+
+            MakeButton(_modal.transform, L.T("从路径导入…", "From path…"),
+                       new Vector2(300f, fy), new Vector2(200f, 32f), ShowPathDialog, true);
+            MakeButton(_modal.transform, L.T("取消", "Cancel"),
+                       new Vector2(620f, fy), new Vector2(116f, 32f), CloseDialog, true);
+        }
+
+        private void ShowPathDialog()
+        {
+            CloseDialog();
+            _modalOpen = true;
+
+            _modal = new GameObject("ModalPath", typeof(RectTransform), typeof(Image));
+            _modal.transform.SetParent(_root, false);
+            var rt = _modal.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(760f, 220f);
+            _modal.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.12f, 1f);
+
+            MakeLabel(_modal.transform, L.T("输入 layout.json 的完整路径", "Full path to a layout.json"),
+                      18, new Vector2(24f, -16f), new Vector2(712f, 26f));
+
+            var input = MakeInput(_modal.transform, new Vector2(24f, -58f), new Vector2(712f, 38f),
+                                  Plugin.LayoutPath, _ => { });
+
+            MakeButton(_modal.transform, L.T("导入", "Import"), new Vector2(24f, -130f), new Vector2(200f, 34f),
+                       () => TryImport(input.text.Trim()), true);
+            MakeButton(_modal.transform, L.T("取消", "Cancel"), new Vector2(240f, -130f), new Vector2(120f, 34f),
+                       CloseDialog, true);
+        }
+
+        private void TryImport(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            if (!Plugin.PeekLayout(path, out int imgs, out int txts, out string err))
+            {
+                ShowDialog(L.T("无法读取: ", "Cannot read: ") + err, new DlgBtn("OK", CloseDialog));
+                return;
+            }
+
+            int total = imgs + txts;
+            if (total > 100)
+            {
+                ShowDialog((L.Zh ? "该布局包含 " + total + " 个元素，超过上限（100），已拒绝导入。"
+                                 : "This layout has " + total + " elements, over the limit (100). Import refused."),
+                           new DlgBtn("OK", CloseDialog));
+                return;
+            }
+
+            if (total > 30)
+            {
+                ShowDialog((L.Zh ? "该布局包含 " + total + " 个元素，可能影响性能，仍要加载吗？"
+                                 : "This layout has " + total + " elements and may hurt performance. Load anyway?"),
+                           new DlgBtn(L.T("加载", "Load"), () => DoImportPath(path)),
+                           new DlgBtn(L.T("取消", "Cancel"), CloseDialog));
+                return;
+            }
+
+            DoImportPath(path);
+        }
+
+        private void DoImportPath(string path)
+        {
+            CloseDialog();
+            PushUndo();
+            if (Plugin.ImportLayoutFrom(path, _warning, out var err))
+            {
+                _status = L.T("已导入 ", "Imported ") + Path.GetFileNameWithoutExtension(path);
+                Rebuild();
+                Select("Text");
+            }
+            else
+            {
+                _status = L.T("导入失败: ", "Import failed: ") + err;
+                Plugin.Log.LogError(_status);
+                RefreshPanel();
+            }
         }
 
         private void ResetRequest()
