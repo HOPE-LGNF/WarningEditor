@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.9.1";
+        public const string PluginVersion = "1.10.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -122,7 +122,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.9.1 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.10.0 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -175,6 +175,102 @@ namespace WarningEditor
 
         internal static void SaveConfig() => Instance.Config.Save();
 
+        // ---------------- 布局导入 / 导出 ----------------
+        internal static string LayoutDir => Path.Combine(BepInEx.Paths.ConfigPath, "WarningEditor");
+        internal static string LayoutPath => Path.Combine(LayoutDir, "layout.json");
+
+        internal static string ExportLayout()
+        {
+            var d = new LayoutDto();
+            d.images = CfgCount.Value;
+            for (int i = 0; i < d.images; i++)
+            {
+                var r = GetImgRect(i);
+                d.img.Add(new ImgDto
+                {
+                    name = GetImgName(i).Value,
+                    x = r.x, y = r.y, w = r.z, h = r.w,
+                    fps = EF(i, "Fps", 12f, "").Value,
+                    speed = EF(i, "Speed", 1f, "").Value,
+                    loop = ES(i, "Loop", "loop", "").Value,
+                    loopCount = EI(i, "LoopCount", 0, "").Value,
+                    pingSkip = EB(i, "PingSkip", true, "").Value
+                });
+            }
+            d.texts = CfgTextCount.Value;
+            for (int i = 0; i < d.texts; i++)
+            {
+                var r = GetTxtRect(i);
+                d.txt.Add(new TxtDto
+                {
+                    text = GetTxtText(i).Value,
+                    colors = GetTxtColors(i).Value,
+                    align = GetTxtAlign(i).Value,
+                    valign = GetTxtVAlign(i).Value,
+                    font = GetTxtRectDict(i)["Font"].Value,
+                    x = r.x, y = r.y, w = r.z, h = r.w
+                });
+            }
+            var tr = GetFixed("Text");
+            d.textRect = new RectDto { x = tr.x, y = tr.y, w = tr.z, h = tr.w };
+            var lr = GetFixed("Logo");
+            d.logoRect = new RectDto { x = lr.x, y = lr.y, w = lr.z, h = lr.w };
+            d.textOverride = CfgTextOverride.Value;
+
+            Directory.CreateDirectory(LayoutDir);
+            File.WriteAllText(LayoutPath, JsonUtility.ToJson(d, true));
+            Log.LogInfo("布局已导出: " + LayoutPath);
+            return LayoutPath;
+        }
+
+        internal static bool ImportLayout(Transform warning, out string error)
+        {
+            error = null;
+            if (!File.Exists(LayoutPath)) { error = "找不到 " + LayoutPath; return false; }
+
+            LayoutDto d;
+            try { d = JsonUtility.FromJson<LayoutDto>(File.ReadAllText(LayoutPath)); }
+            catch (Exception e) { error = "JSON 解析失败: " + e.Message; return false; }
+            if (d == null) { error = "JSON 解析失败"; return false; }
+
+            CfgCount.Value = Mathf.Max(0, d.images);
+            for (int i = 0; i < CfgCount.Value; i++)
+            {
+                ImgDto it = i < d.img.Count ? d.img[i] : null;
+                if (it == null) continue;
+                GetImgName(i).Value = it.name ?? "";
+                SetImgRect(i, new Vector4(it.x, it.y, it.w, it.h));
+                EF(i, "Fps", 12f, "").Value = it.fps > 0f ? it.fps : 12f;
+                EF(i, "Speed", 1f, "").Value = it.speed > 0f ? it.speed : 1f;
+                ES(i, "Loop", "loop", "").Value = string.IsNullOrEmpty(it.loop) ? "loop" : it.loop;
+                EI(i, "LoopCount", 0, "").Value = it.loopCount;
+                EB(i, "PingSkip", true, "").Value = it.pingSkip;
+            }
+
+            CfgTextCount.Value = Mathf.Max(0, d.texts);
+            for (int i = 0; i < CfgTextCount.Value; i++)
+            {
+                TxtDto it = i < d.txt.Count ? d.txt[i] : null;
+                if (it == null) continue;
+                GetTxtText(i).Value = it.text ?? "";
+                GetTxtColors(i).Value = it.colors ?? "";
+                GetTxtAlign(i).Value = string.IsNullOrEmpty(it.align) ? "center" : it.align;
+                GetTxtVAlign(i).Value = string.IsNullOrEmpty(it.valign) ? "middle" : it.valign;
+                GetTxtRectDict(i)["Font"].Value = it.font > 0f ? it.font : 24f;
+                SetTxtRect(i, new Vector4(it.x, it.y, it.w, it.h));
+            }
+
+            if (d.textRect != null) SetFixed("Text", new Vector4(d.textRect.x, d.textRect.y, d.textRect.w, d.textRect.h));
+            if (d.logoRect != null) SetFixed("Logo", new Vector4(d.logoRect.x, d.logoRect.y, d.logoRect.w, d.logoRect.h));
+            CfgTextOverride.Value = d.textOverride ?? "";
+
+            SyncImages(warning);
+            SyncTexts(warning);
+            ApplyTextOverride(warning);
+            Log.LogInfo("布局已导入: " + LayoutPath);
+            return true;
+        }
+
         // ---------------- 元素扩展配置 ----------------
         private static readonly Dictionary<string, ConfigEntry<float>> _ef = new Dictionary<string, ConfigEntry<float>>();
         private static readonly Dictionary<string, ConfigEntry<int>> _ei = new Dictionary<string, ConfigEntry<int>>();
@@ -215,7 +311,7 @@ namespace WarningEditor
             files = null;
             if (string.IsNullOrEmpty(firstName)) return null;
 
-            var baseName = Path.GetFileNameWithoutExtension(firstName);
+            var baseName = RelBase(firstName);
             var m = Regex.Match(baseName, @"^(.*)[ _\-.](\d+)$");
             if (!m.Success) return null;
             string prefix = m.Groups[1].Value;
@@ -224,7 +320,7 @@ namespace WarningEditor
             var hits = new List<KeyValuePair<int, string>>();
             foreach (var f in ListImages())
             {
-                var bn = Path.GetFileNameWithoutExtension(f);
+                var bn = RelBase(f);
                 var mm = Regex.Match(bn, @"^(.*)[ _\-.](\d+)$");
                 if (!mm.Success) continue;
                 if (mm.Groups[1].Value != prefix) continue;
@@ -422,13 +518,18 @@ namespace WarningEditor
             try
             {
                 if (!Directory.Exists(ImagesDir)) return new[] { "warning_experiment.png" };
-                var files = Directory.GetFiles(ImagesDir);
+                var files = Directory.GetFiles(ImagesDir, "*.*", SearchOption.AllDirectories);
                 var list = new List<string>();
                 foreach (var f in files)
                 {
                     var ext = Path.GetExtension(f).ToLowerInvariant();
-                    if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
-                        list.Add(Path.GetFileName(f));
+                    if (ext != ".png" && ext != ".jpg" && ext != ".jpeg") continue;
+
+                    // 保留相对路径，支持 images/子文件夹/xxx.png
+                    var rel = f.Substring(ImagesDir.Length)
+                               .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                               .Replace('\\', '/');
+                    list.Add(rel);
                 }
                 list.Sort(StringComparer.OrdinalIgnoreCase);
                 if (list.Count == 0) list.Add("warning_experiment.png");
@@ -439,6 +540,12 @@ namespace WarningEditor
                 Log.LogError("扫描图片失败: " + e.Message);
                 return new[] { "warning_experiment.png" };
             }
+        }
+
+        private static string RelBase(string rel)
+        {
+            int dot = rel.LastIndexOf('.');
+            return dot > 0 ? rel.Substring(0, dot) : rel;
         }
 
         internal static void ClearImageCache()
@@ -657,6 +764,44 @@ namespace WarningEditor
             Plugin.Log.LogInfo("热键: 打开布局编辑器");
             LayoutEditor.Open(pre.contentWarning.transform);
         }
+    }
+
+    [System.Serializable]
+    public class LayoutDto
+    {
+        public int version = 1;
+        public int images;
+        public List<ImgDto> img = new List<ImgDto>();
+        public int texts;
+        public List<TxtDto> txt = new List<TxtDto>();
+        public RectDto textRect;
+        public RectDto logoRect;
+        public string textOverride = "";
+    }
+
+    [System.Serializable]
+    public class ImgDto
+    {
+        public string name = "";
+        public float x, y, w, h;
+        public float fps = 12f;
+        public float speed = 1f;
+        public string loop = "loop";
+        public int loopCount = 0;
+        public bool pingSkip = true;
+    }
+
+    [System.Serializable]
+    public class TxtDto
+    {
+        public string text = "", colors = "", align = "center", valign = "middle";
+        public float x, y, w, h, font = 24f;
+    }
+
+    [System.Serializable]
+    public class RectDto
+    {
+        public float x, y, w, h;
     }
 
     [HarmonyPatch(typeof(PreRunScript), "Start")]

@@ -427,6 +427,10 @@ namespace WarningEditor
             MakeButton(p, L.T("撤回", "Undo"), new Vector2(14f, -y), new Vector2(84f, 28f), Undo);
             MakeButton(p, L.T("置顶", "Front"), new Vector2(104f, -y), new Vector2(84f, 28f), BringToFront);
             MakeButton(p, L.T("居中", "Center"), new Vector2(194f, -y), new Vector2(84f, 28f), () => Align("cxcy"));
+            y += 34f;
+
+            MakeButton(p, L.T("导出布局", "Export"), new Vector2(14f, -y), new Vector2(126f, 28f), DoExport);
+            MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), DoImport);
             y += 36f;
 
             var tl0 = GetTopLeft(e, _selected);
@@ -1083,6 +1087,44 @@ namespace WarningEditor
             ShowDialog(L.T("有未保存的更改，要保存吗？", "You have unsaved changes. Save them?"),
                 new DlgBtn(L.T("保存并退出", "Save & Exit"), () => { CloseDialog(); Save(); }),
                 new DlgBtn(L.T("不保存退出", "Exit without saving"), () => { CloseDialog(); Close(false); }),
+                new DlgBtn(L.T("取消", "Cancel"), CloseDialog));
+        }
+
+        private void DoExport()
+        {
+            try
+            {
+                string path = Plugin.ExportLayout();
+                _status = L.T("已导出: ", "Exported: ") + path;
+                Plugin.Log.LogInfo(_status);
+            }
+            catch (Exception e)
+            {
+                _status = L.T("导出失败: ", "Export failed: ") + e.Message;
+                Plugin.Log.LogError(_status);
+            }
+        }
+
+        private void DoImport()
+        {
+            ShowDialog(L.T("导入会覆盖当前布局，继续？", "Import will overwrite the current layout. Continue?"),
+                new DlgBtn(L.T("导入", "Import"), () =>
+                {
+                    CloseDialog();
+                    PushUndo();
+                    if (Plugin.ImportLayout(_warning, out var err))
+                    {
+                        _status = L.T("已导入", "Imported");
+                        Rebuild();
+                        Select("Text");
+                    }
+                    else
+                    {
+                        _status = L.T("导入失败: ", "Import failed: ") + err;
+                        Plugin.Log.LogError(_status);
+                        RefreshPanel();
+                    }
+                }),
                 new DlgBtn(L.T("取消", "Cancel"), CloseDialog));
         }
 
