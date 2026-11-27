@@ -48,6 +48,11 @@ namespace WarningEditor
             public int ImgCount, TxtCount;
             public readonly List<string> ImgNames = new List<string>();
             public readonly List<Vector4> ImgRects = new List<Vector4>();
+            public readonly List<float> ImgFps = new List<float>();
+            public readonly List<float> ImgSpeed = new List<float>();
+            public readonly List<string> ImgLoop = new List<string>();
+            public readonly List<int> ImgLoopCount = new List<int>();
+            public readonly List<bool> ImgPingSkip = new List<bool>();
             public readonly List<string> TxtText = new List<string>();
             public readonly List<string> TxtColors = new List<string>();
             public readonly List<string> TxtAlign = new List<string>();
@@ -168,6 +173,11 @@ namespace WarningEditor
             {
                 s.ImgNames.Add(Plugin.GetImgName(i).Value);
                 s.ImgRects.Add(Plugin.GetImgRect(i));
+                s.ImgFps.Add(Plugin.EF(i, "Fps", 12f, "序列播放帧率").Value);
+                s.ImgSpeed.Add(Plugin.EF(i, "Speed", 1f, "速度倍率").Value);
+                s.ImgLoop.Add(Plugin.ES(i, "Loop", "loop", "循环模式").Value);
+                s.ImgLoopCount.Add(Plugin.EI(i, "LoopCount", 0, "循环次数").Value);
+                s.ImgPingSkip.Add(Plugin.EB(i, "PingSkip", true, "跳过重复端点").Value);
             }
             s.TxtCount = TextCount;
             for (int i = 0; i < s.TxtCount; i++)
@@ -193,6 +203,11 @@ namespace WarningEditor
             {
                 Plugin.GetImgName(i).Value = s.ImgNames[i];
                 Plugin.SetImgRect(i, s.ImgRects[i]);
+                Plugin.EF(i, "Fps", 12f, "序列播放帧率").Value = s.ImgFps[i];
+                Plugin.EF(i, "Speed", 1f, "速度倍率").Value = s.ImgSpeed[i];
+                Plugin.ES(i, "Loop", "loop", "循环模式").Value = s.ImgLoop[i];
+                Plugin.EI(i, "LoopCount", 0, "循环次数").Value = s.ImgLoopCount[i];
+                Plugin.EB(i, "PingSkip", true, "跳过重复端点").Value = s.ImgPingSkip[i];
             }
             Plugin.CfgTextCount.Value = s.TxtCount;
             for (int i = 0; i < s.TxtCount; i++)
@@ -464,6 +479,78 @@ namespace WarningEditor
                 y += 34f;
             }
 
+            if (IsImg(_selected))
+            {
+                var ap = e.GetComponent<AnimPlayer>();
+                if (ap != null && ap.IsAnimated)
+                {
+                    int ai = IdxOf(_selected);
+                    float eff = ap.Fps > 0f ? ap.FrameCount / ap.Fps / Mathf.Max(0.01f, ap.Speed) : 0f;
+                    var sum = MakeLabel(p, $"▶ {ap.FrameCount} 帧 · {ap.Fps:0.#} fps · {eff:0.##}s", 13,
+                                        new Vector2(14f, -y), new Vector2(272f, 20f));
+                    sum.color = new Color(0.5f, 0.9f, 1f, 1f);
+                    y += 24f;
+
+                    Row(L.T("FPS", "FPS"), ap.Fps.ToString("0.#"), str =>
+                    {
+                        if (float.TryParse(str, out var v) && v > 0f)
+                        {
+                            PushUndo();
+                            Plugin.EF(ai, "Fps", 12f, "序列播放帧率").Value = v;
+                            ap.Fps = v; ap.ResetPlayback();
+                            _status = "FPS " + v;
+                            RefreshPanel();
+                        }
+                    }, 34f);
+
+                    Row(L.T("速度", "Speed"), ap.Speed.ToString("0.##"), str =>
+                    {
+                        if (float.TryParse(str, out var v) && v > 0f)
+                        {
+                            PushUndo();
+                            Plugin.EF(ai, "Speed", 1f, "速度倍率").Value = v;
+                            ap.Speed = v; ap.ResetPlayback();
+                            _status = L.T("速度 x", "Speed x") + v;
+                            RefreshPanel();
+                        }
+                    }, 34f);
+
+                    MakeButton(p, L.T("循环模式: ", "Loop: ") + LoopName(ap.LoopMode),
+                               new Vector2(14f, -y), new Vector2(272f, 28f), () =>
+                    {
+                        PushUndo();
+                        string next = ap.LoopMode == "loop" ? "pingpong" : ap.LoopMode == "pingpong" ? "once" : "loop";
+                        ap.LoopMode = next; ap.ResetPlayback();
+                        Plugin.ES(ai, "Loop", "loop", "循环模式").Value = next;
+                    });
+                    y += 32f;
+
+                    MakeButton(p, L.T("循环次数: ", "Count: ") + (ap.LoopCount == 0 ? "∞" : ap.LoopCount.ToString()),
+                               new Vector2(14f, -y), new Vector2(272f, 28f), () =>
+                    {
+                        PushUndo();
+                        int[] opts = { 0, 1, 3, 5, 10 };
+                        int idx = System.Array.IndexOf(opts, ap.LoopCount);
+                        int next = opts[(idx + 1 + opts.Length) % opts.Length];
+                        ap.LoopCount = next; ap.ResetPlayback();
+                        Plugin.EI(ai, "LoopCount", 0, "循环次数").Value = next;
+                    });
+                    y += 32f;
+
+                    if (ap.LoopMode == "pingpong")
+                    {
+                        MakeButton(p, L.T("跳过重复端点: ", "Skip ends: ") + (ap.PingSkip ? L.T("开", "On") : L.T("关", "Off")),
+                                   new Vector2(14f, -y), new Vector2(272f, 28f), () =>
+                        {
+                            PushUndo();
+                            ap.PingSkip = !ap.PingSkip; ap.ResetPlayback();
+                            Plugin.EB(ai, "PingSkip", true, "跳过重复端点").Value = ap.PingSkip;
+                        });
+                        y += 32f;
+                    }
+                }
+            }
+
             if (IsImg(_selected) || IsTxt(_selected))
             {
                 MakeButton(p, L.T("删除此元素", "Delete"), new Vector2(14f, -y), new Vector2(126f, 28f), DeleteSelected);
@@ -559,6 +646,13 @@ namespace WarningEditor
                 var st = MakeLabel(p, _status, 13, new Vector2(14f, -y - 2f), new Vector2(272f, 20f));
                 st.color = new Color(0.45f, 0.85f, 1f, 1f);
             }
+        }
+
+        private static string LoopName(string m)
+        {
+            if (m == "pingpong") return L.T("往返", "Ping-pong");
+            if (m == "once") return L.T("单次", "Once");
+            return L.T("循环", "Loop");
         }
 
         private void AddColorSwatches(Transform p, float y, TextMeshProUGUI tmp)

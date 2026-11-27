@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -17,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.8.3";
+        public const string PluginVersion = "1.9.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -121,7 +122,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.8.3 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.9.0 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -173,6 +174,77 @@ namespace WarningEditor
         }
 
         internal static void SaveConfig() => Instance.Config.Save();
+
+        // ---------------- 元素扩展配置 ----------------
+        private static readonly Dictionary<string, ConfigEntry<float>> _ef = new Dictionary<string, ConfigEntry<float>>();
+        private static readonly Dictionary<string, ConfigEntry<int>> _ei = new Dictionary<string, ConfigEntry<int>>();
+        private static readonly Dictionary<string, ConfigEntry<bool>> _eb = new Dictionary<string, ConfigEntry<bool>>();
+        private static readonly Dictionary<string, ConfigEntry<string>> _es = new Dictionary<string, ConfigEntry<string>>();
+
+        internal static ConfigEntry<float> EF(int i, string key, float def, string desc)
+        {
+            string k = i + "/" + key;
+            if (!_ef.TryGetValue(k, out var e)) { e = Instance.Config.Bind("Element" + i, key, def, desc); _ef[k] = e; }
+            return e;
+        }
+
+        internal static ConfigEntry<int> EI(int i, string key, int def, string desc)
+        {
+            string k = i + "/" + key;
+            if (!_ei.TryGetValue(k, out var e)) { e = Instance.Config.Bind("Element" + i, key, def, desc); _ei[k] = e; }
+            return e;
+        }
+
+        internal static ConfigEntry<bool> EB(int i, string key, bool def, string desc)
+        {
+            string k = i + "/" + key;
+            if (!_eb.TryGetValue(k, out var e)) { e = Instance.Config.Bind("Element" + i, key, def, desc); _eb[k] = e; }
+            return e;
+        }
+
+        internal static ConfigEntry<string> ES(int i, string key, string def, string desc)
+        {
+            string k = i + "/" + key;
+            if (!_es.TryGetValue(k, out var e)) { e = Instance.Config.Bind("Element" + i, key, def, desc); _es[k] = e; }
+            return e;
+        }
+
+        /// <summary>把 name_0.png / name_1.png … 识别成序列，按编号排序加载。</summary>
+        internal static Sprite[] LoadSequence(string firstName, out string[] files)
+        {
+            files = null;
+            if (string.IsNullOrEmpty(firstName)) return null;
+
+            var baseName = Path.GetFileNameWithoutExtension(firstName);
+            var m = Regex.Match(baseName, @"^(.*)[ _\-.](\d+)$");
+            if (!m.Success) return null;
+            string prefix = m.Groups[1].Value;
+            if (string.IsNullOrEmpty(prefix)) return null;
+
+            var hits = new List<KeyValuePair<int, string>>();
+            foreach (var f in ListImages())
+            {
+                var bn = Path.GetFileNameWithoutExtension(f);
+                var mm = Regex.Match(bn, @"^(.*)[ _\-.](\d+)$");
+                if (!mm.Success) continue;
+                if (mm.Groups[1].Value != prefix) continue;
+                if (!int.TryParse(mm.Groups[2].Value, out int n)) continue;
+                hits.Add(new KeyValuePair<int, string>(n, f));
+            }
+            if (hits.Count < 2) return null;
+
+            hits.Sort((a, b) => a.Key.CompareTo(b.Key));
+            files = new string[hits.Count];
+            var sprites = new Sprite[hits.Count];
+            for (int i = 0; i < hits.Count; i++)
+            {
+                files[i] = hits[i].Value;
+                sprites[i] = LoadSprite(hits[i].Value);
+                if (sprites[i] == null) return null;
+            }
+            Log.LogInfo($"序列: {prefix} 共 {hits.Count} 帧");
+            return sprites;
+        }
 
         // ---------------- 文本框 ----------------
         internal static ConfigEntry<string> GetTxtText(int i)
@@ -518,6 +590,25 @@ namespace WarningEditor
                 var r = GetImgRect(i);
                 rt.anchoredPosition = new Vector2(r.x, r.y);
                 rt.sizeDelta = new Vector2(r.z, r.w);
+
+                var seq = LoadSequence(GetImgName(i).Value, out var _);
+                var ap = go.GetComponent<AnimPlayer>();
+                if (seq != null && seq.Length > 1)
+                {
+                    if (ap == null) ap = go.AddComponent<AnimPlayer>();
+                    ap.Frames = seq;
+                    ap.Fps = EF(i, "Fps", 12f, "序列播放帧率").Value;
+                    ap.Speed = EF(i, "Speed", 1f, "速度倍率").Value;
+                    ap.LoopMode = ES(i, "Loop", "loop", "循环模式 loop/pingpong/once").Value;
+                    ap.LoopCount = EI(i, "LoopCount", 0, "循环次数 0=无限").Value;
+                    ap.PingSkip = EB(i, "PingSkip", true, "往返时跳过重复端点").Value;
+                    ap.ResetPlayback();
+                    img.sprite = seq[0];
+                }
+                else if (ap != null)
+                {
+                    ap.Frames = null;
+                }
             }
 
             for (int i = n; ; i++)
