@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.9.0";
+        public const string PluginVersion = "1.9.1";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -122,7 +122,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.9.0 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.9.1 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -559,6 +559,33 @@ namespace WarningEditor
             rt.sizeDelta = new Vector2(v.z, v.w);
         }
 
+        /// <summary>按当前图片名配置动画播放器（序列帧）或退回静态图。</summary>
+        internal static void ConfigureAnim(int i, GameObject go)
+        {
+            if (go == null) return;
+            var img = go.GetComponent<Image>();
+            var ap = go.GetComponent<AnimPlayer>();
+            var seq = LoadSequence(GetImgName(i).Value, out var _);
+
+            if (seq != null && seq.Length > 1)
+            {
+                if (ap == null) ap = go.AddComponent<AnimPlayer>();
+                ap.Frames = seq;
+                ap.Fps = EF(i, "Fps", 12f, "序列播放帧率").Value;
+                ap.Speed = EF(i, "Speed", 1f, "速度倍率").Value;
+                ap.LoopMode = ES(i, "Loop", "loop", "循环模式 loop/pingpong/once").Value;
+                ap.LoopCount = EI(i, "LoopCount", 0, "循环次数 0=无限").Value;
+                ap.PingSkip = EB(i, "PingSkip", true, "往返时跳过重复端点").Value;
+                ap.ResetPlayback();
+                if (img != null) img.sprite = seq[0];
+            }
+            else
+            {
+                if (ap != null) ap.Frames = null;
+                if (img != null) img.sprite = LoadSprite(GetImgName(i).Value);
+            }
+        }
+
         internal static void SyncImages(Transform warning)
         {
             int n = Mathf.Max(0, CfgCount.Value);
@@ -591,24 +618,7 @@ namespace WarningEditor
                 rt.anchoredPosition = new Vector2(r.x, r.y);
                 rt.sizeDelta = new Vector2(r.z, r.w);
 
-                var seq = LoadSequence(GetImgName(i).Value, out var _);
-                var ap = go.GetComponent<AnimPlayer>();
-                if (seq != null && seq.Length > 1)
-                {
-                    if (ap == null) ap = go.AddComponent<AnimPlayer>();
-                    ap.Frames = seq;
-                    ap.Fps = EF(i, "Fps", 12f, "序列播放帧率").Value;
-                    ap.Speed = EF(i, "Speed", 1f, "速度倍率").Value;
-                    ap.LoopMode = ES(i, "Loop", "loop", "循环模式 loop/pingpong/once").Value;
-                    ap.LoopCount = EI(i, "LoopCount", 0, "循环次数 0=无限").Value;
-                    ap.PingSkip = EB(i, "PingSkip", true, "往返时跳过重复端点").Value;
-                    ap.ResetPlayback();
-                    img.sprite = seq[0];
-                }
-                else if (ap != null)
-                {
-                    ap.Frames = null;
-                }
+                ConfigureAnim(i, go);
             }
 
             for (int i = n; ; i++)

@@ -1265,8 +1265,7 @@ namespace WarningEditor
             Plugin.GetImgName(i).Value = next;
 
             var e = FindElement(_selected);
-            var img = e != null ? e.GetComponent<Image>() : null;
-            if (img != null) img.sprite = Plugin.LoadSprite(next);
+            if (e != null) Plugin.ConfigureAnim(i, e.gameObject);
             _status = L.T("换图: ", "Image: ") + next;
             Plugin.Log.LogInfo($"换图 目标={_selected} -> {next}");
         }
