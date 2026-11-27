@@ -670,6 +670,10 @@ namespace WarningEditor
             MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), ShowLayoutList);
             y += 34f;
 
+            MakeButton(p, L.T("导出为…", "Export as…"), new Vector2(14f, -y), new Vector2(126f, 28f), ExportAs);
+            MakeButton(p, L.T("浏览导入…", "Browse…"), new Vector2(146f, -y), new Vector2(126f, 28f), NativeImportPick);
+            y += 34f;
+
             var resetBtn = MakeButton(p, L.T("恢复默认布局", "Reset Layout"),
                                       new Vector2(14f, -y), new Vector2(272f, 30f), ResetRequest);
             var ri = resetBtn.GetComponent<Image>();
@@ -1174,6 +1178,64 @@ namespace WarningEditor
                 _status = L.T("导出失败: ", "Export failed: ") + e.Message;
                 Plugin.Log.LogError(_status);
             }
+        }
+
+        private void ExportAs()
+        {
+            if (!NativeDialogs.Available)
+            {
+                _status = L.T("当前环境不支持原生对话框", "Native dialog unavailable");
+                RefreshPanel();
+                DoExport();
+                return;
+            }
+
+            string def = "layout-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json";
+            string path;
+            if (!NativeDialogs.TryPickSave(L.T("导出布局", "Export layout"), Plugin.LayoutsDir, def, out path))
+            {
+                _status = L.T("原生对话框不可用，已改用自动命名", "Native dialog failed, used auto name");
+                RefreshPanel();
+                DoExport();
+                return;
+            }
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                Plugin.ExportLayoutTo(path);
+                _status = L.T("已导出 ", "Exported ") + Path.GetFileName(path);
+            }
+            catch (Exception e)
+            {
+                _status = L.T("导出失败: ", "Export failed: ") + e.Message;
+                Plugin.Log.LogError(_status);
+            }
+            RefreshPanel();
+        }
+
+        private void NativeImportPick()
+        {
+            if (!NativeDialogs.Available)
+            {
+                _status = L.T("当前环境不支持原生对话框", "Native dialog unavailable");
+                RefreshPanel();
+                ShowPathDialog();
+                return;
+            }
+
+            string path;
+            if (!NativeDialogs.TryPickFile(L.T("选择布局文件", "Choose a layout file"), Plugin.LayoutsDir,
+                                           "JSON\0*.json\0All files\0*.*\0\0", out path))
+            {
+                _status = L.T("原生对话框不可用，请手输路径", "Native dialog failed, type a path");
+                RefreshPanel();
+                ShowPathDialog();
+                return;
+            }
+            if (string.IsNullOrEmpty(path)) return;
+
+            TryImport(path);
         }
 
         private void ShowLayoutList()

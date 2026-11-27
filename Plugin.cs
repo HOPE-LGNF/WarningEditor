@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.12.1";
+        public const string PluginVersion = "1.13.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -126,7 +126,8 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.12.1 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.13.0 loaded. images=" + ImagesDir);
+            Log.LogInfo("原生对话框: " + (NativeDialogs.Available ? "可用" : "不可用（非 Windows 或 Wine/Proton）"));
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -184,7 +185,7 @@ namespace WarningEditor
         internal static string LayoutPath => Path.Combine(LayoutDir, "layout.json");
         internal static string LayoutsDir => Path.Combine(LayoutDir, "layouts");
 
-        internal static string ExportLayout(string name = null)
+        internal static string BuildLayoutJson()
         {
             var d = new LayoutDto();
             d.images = CfgCount.Value;
@@ -221,15 +222,30 @@ namespace WarningEditor
             var lr = GetFixed("Logo");
             d.logoRect = new RectDto { x = lr.x, y = lr.y, w = lr.z, h = lr.w };
             d.textOverride = CfgTextOverride.Value;
+            return JsonUtility.ToJson(d, true);
+        }
 
+        internal static string ExportLayout(string name = null)
+        {
+            string json = BuildLayoutJson();
             Directory.CreateDirectory(LayoutsDir);
             if (string.IsNullOrEmpty(name)) name = "layout-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
-            string json = JsonUtility.ToJson(d, true);
             string path = Path.Combine(LayoutsDir, name + ".json");
             File.WriteAllText(path, json);
             File.WriteAllText(LayoutPath, json);   // 保留固定路径，兼容旧流程
             Log.LogInfo("布局已导出: " + path);
             return path;
+        }
+
+        /// <summary>导出到任意路径（原生保存对话框用）。</summary>
+        internal static void ExportLayoutTo(string fullPath)
+        {
+            string json = BuildLayoutJson();
+            var dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllText(fullPath, json);
+            File.WriteAllText(LayoutPath, json);
+            Log.LogInfo("布局已导出: " + fullPath);
         }
 
         internal static bool DeleteLayout(string path, out string error)
