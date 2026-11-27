@@ -18,12 +18,14 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.10.1";
+        public const string PluginVersion = "1.11.0";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
 
         internal static ConfigEntry<bool> CfgEnabled;
+        internal static ConfigEntry<bool> CfgShowBounds;
+        internal static ConfigEntry<bool> CfgLogoVisible;
         internal static ConfigEntry<int> CfgCount;
         internal static ConfigEntry<int> CfgTextCount;
         internal static ConfigEntry<string> CfgTextOverride;
@@ -95,6 +97,8 @@ namespace WarningEditor
             Log = Logger;
 
             CfgEnabled = Config.Bind("General", "Enabled", true, "启用警告页布局调整");
+            CfgShowBounds = Config.Bind("General", "ShowImageBounds", true, "显示图片真实占位框");
+            CfgLogoVisible = Config.Bind("Logo", "Visible", true, "显示 ORO / casualties unknown 标志");
             CfgCount = Config.Bind("Elements", "Count", 1, "图片元素数量");
             if (CfgCount.Value < 0) CfgCount.Value = 0;
 
@@ -122,7 +126,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.10.1 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.11.0 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -625,7 +629,9 @@ namespace WarningEditor
             var textT = warning.Find("Text (TMP)");
             ApplyFixed(textT, "Text");
             ApplyTextOverride(warning);
-            ApplyFixed(warning.Find("Cas"), "Logo");
+            var cas = warning.Find("Cas");
+            ApplyFixed(cas, "Logo");
+            ApplyLogoVisibility(warning);
             SyncImages(warning);
             SyncTexts(warning);
         }
@@ -643,6 +649,13 @@ namespace WarningEditor
         }
 
         internal static bool HasTextOverride => !string.IsNullOrEmpty(CfgTextOverride.Value);
+
+        internal static void ApplyLogoVisibility(Transform warning)
+        {
+            if (warning == null) return;
+            var cas = warning.Find("Cas");
+            if (cas != null) cas.gameObject.SetActive(CfgLogoVisible.Value);
+        }
 
         internal static void ApplyTextOverride(Transform warning)
         {

@@ -61,9 +61,13 @@ namespace WarningEditor
             public readonly List<float> TxtFont = new List<float>();
             public Vector4 TextRect, LogoRect;
             public string Override;
+            public bool LogoVisible;
         }
 
         private readonly List<Snap> _undo = new List<Snap>();
+        private readonly List<Snap> _redo = new List<Snap>();
+        private readonly Dictionary<string, Image> _chips = new Dictionary<string, Image>();
+        private readonly List<FitBoundsView> _bounds = new List<FitBoundsView>();
         private Snap _initial;
 
         private class BtnEntry
@@ -192,6 +196,7 @@ namespace WarningEditor
             s.TextRect = Plugin.GetFixed("Text");
             s.LogoRect = Plugin.GetFixed("Logo");
             s.Override = Plugin.CfgTextOverride.Value;
+            s.LogoVisible = Plugin.CfgLogoVisible.Value;
             return s;
         }
 
@@ -222,6 +227,8 @@ namespace WarningEditor
             Plugin.SetFixed("Text", s.TextRect);
             Plugin.SetFixed("Logo", s.LogoRect);
             Plugin.CfgTextOverride.Value = s.Override;
+            Plugin.CfgLogoVisible.Value = s.LogoVisible;
+            Plugin.ApplyLogoVisibility(_warning);
 
             Plugin.SyncImages(_warning);
             Plugin.SyncTexts(_warning);
@@ -244,13 +251,17 @@ namespace WarningEditor
             CommitToMemory();
             _undo.Add(Capture());
             if (_undo.Count > 40) _undo.RemoveAt(0);
+            _redo.Clear();
         }
 
         private void Undo()
         {
             if (_undo.Count == 0) { _status = L.T("没有可撤回的操作", "Nothing to undo"); RefreshPanel(); return; }
+            CommitToMemory();
+            var cur = Capture();
             var s = _undo[_undo.Count - 1];
             _undo.RemoveAt(_undo.Count - 1);
+            _redo.Add(cur);
             ApplySnapshot(s, true);
             _status = L.T("已撤回", "Undone");
             RefreshPanel();
@@ -289,7 +300,11 @@ namespace WarningEditor
             if (text != null) { _elements["Text"] = text; _order.Add("Text"); }
 
             var logo = _warning.Find("Cas") as RectTransform;
-            if (logo != null) { _elements["Logo"] = logo; _order.Add("Logo"); }
+            if (logo != null && Plugin.CfgLogoVisible.Value)
+            {
+                _elements["Logo"] = logo;
+                _order.Add("Logo");
+            }
 
             for (int i = 0; i < ImageCount; i++)
             {
@@ -363,10 +378,12 @@ namespace WarningEditor
                       new Vector2(16f, -8f), new Vector2(190f, 26f));
 
             float x = 210f;
+            _chips.Clear();
             foreach (var id in _order)
             {
                 var sid = id;
-                MakeButton(_bar.transform, LabelOf(id), new Vector2(x, -6f), new Vector2(74f, 30f), () => Select(sid));
+                var chip = MakeButton(_bar.transform, LabelOf(id), new Vector2(x, -6f), new Vector2(74f, 30f), () => Select(sid));
+                _chips[sid] = chip.GetComponent<Image>();
                 x += 80f;
             }
 
@@ -424,13 +441,8 @@ namespace WarningEditor
                 y += 38f;
             }
 
-            MakeButton(p, L.T("撤回", "Undo"), new Vector2(14f, -y), new Vector2(84f, 28f), Undo);
-            MakeButton(p, L.T("置顶", "Front"), new Vector2(104f, -y), new Vector2(84f, 28f), BringToFront);
-            MakeButton(p, L.T("居中", "Center"), new Vector2(194f, -y), new Vector2(84f, 28f), () => Align("cxcy"));
-            y += 34f;
-
-            MakeButton(p, L.T("导出布局", "Export"), new Vector2(14f, -y), new Vector2(126f, 28f), DoExport);
-            MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), DoImport);
+            MakeButton(p, L.T("上移一层", "Layer Up"), new Vector2(14f, -y), new Vector2(126f, 28f), () => MoveLayer(1));
+            MakeButton(p, L.T("下移一层", "Layer Down"), new Vector2(146f, -y), new Vector2(126f, 28f), () => MoveLayer(-1));
             y += 36f;
 
             var tl0 = GetTopLeft(e, _selected);
@@ -555,16 +567,14 @@ namespace WarningEditor
                 }
             }
 
-            if (IsImg(_selected) || IsTxt(_selected))
+            if (IsImg(_selected) || IsTxt(_selected) || _selected == "Logo")
             {
-                MakeButton(p, L.T("删除此元素", "Delete"), new Vector2(14f, -y), new Vector2(126f, 28f), DeleteSelected);
-                y += 34f;
+                var del = MakeButton(p, L.T("删除此元素", "Delete Element"),
+                                     new Vector2(14f, -y), new Vector2(272f, 30f), DeleteSelected);
+                var di = del.GetComponent<Image>();
+                if (di != null) di.color = new Color(0.35f, 0.10f, 0.12f, 1f);
+                y += 38f;
             }
-
-            MakeButton(p, L.T("恢复默认布局", "Reset Layout"), new Vector2(14f, -y), new Vector2(272f, 30f), ResetRequest);
-            var rb = _buttons[_buttons.Count - 1].rt.GetComponent<Image>();
-            if (rb != null) rb.color = new Color(0.42f, 0.12f, 0.14f, 1f);
-            y += 40f;
 
             if (_selected == "Text")
             {
@@ -645,10 +655,38 @@ namespace WarningEditor
                 y += 32f;
             }
 
+            // ---------------- 全局 ----------------
+            y += 10f;
+            var gh = MakeLabel(p, L.T("全局", "Global"), 13, new Vector2(14f, -y), new Vector2(272f, 20f));
+            gh.color = new Color(0.55f, 0.62f, 0.72f, 1f);
+            y += 26f;
+
+            MakeButton(p, L.T("撤回", "Undo"), new Vector2(14f, -y), new Vector2(126f, 28f), Undo);
+            MakeButton(p, L.T("重做", "Redo"), new Vector2(146f, -y), new Vector2(126f, 28f), Redo);
+            y += 34f;
+
+            MakeButton(p, L.T("导出布局", "Export"), new Vector2(14f, -y), new Vector2(126f, 28f), DoExport);
+            MakeButton(p, L.T("导入布局", "Import"), new Vector2(146f, -y), new Vector2(126f, 28f), DoImport);
+            y += 34f;
+
+            var resetBtn = MakeButton(p, L.T("恢复默认布局", "Reset Layout"),
+                                      new Vector2(14f, -y), new Vector2(272f, 30f), ResetRequest);
+            var ri = resetBtn.GetComponent<Image>();
+            if (ri != null) ri.color = new Color(0.42f, 0.12f, 0.14f, 1f);
+            y += 36f;
+
+            MakeButton(p, L.T("图片边框: ", "Image bounds: ") +
+                           (Plugin.CfgShowBounds.Value ? L.T("开", "On") : L.T("关", "Off")),
+                       new Vector2(14f, -y), new Vector2(126f, 28f), ToggleBounds);
+            if (!Plugin.CfgLogoVisible.Value)
+                MakeButton(p, L.T("显示 Logo", "Show Logo"), new Vector2(146f, -y), new Vector2(126f, 28f), ShowLogo);
+            y += 34f;
+
             if (!string.IsNullOrEmpty(_status))
             {
-                var st = MakeLabel(p, _status, 13, new Vector2(14f, -y - 2f), new Vector2(272f, 20f));
+                var st = MakeLabel(p, _status, 13, new Vector2(14f, -y - 2f), new Vector2(272f, 38f));
                 st.color = new Color(0.45f, 0.85f, 1f, 1f);
+                st.enableWordWrapping = true;
             }
         }
 
@@ -769,6 +807,19 @@ namespace WarningEditor
             var drag = go.AddComponent<DragMove>();
             drag.Editor = this; drag.Id = id;
             _hits[id] = img;
+
+            if (IsImg(id))
+            {
+                var bgo = new GameObject("FitBounds", typeof(RectTransform));
+                bgo.transform.SetParent(target, false);
+                var brt = bgo.GetComponent<RectTransform>();
+                brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one;
+                brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
+                var view = bgo.AddComponent<FitBoundsView>();
+                view.Init(target.GetComponent<Image>());
+                bgo.SetActive(Plugin.CfgShowBounds.Value);
+                _bounds.Add(view);
+            }
         }
 
         private void CleanupHits()
@@ -781,9 +832,10 @@ namespace WarningEditor
                 {
                     var c = e.GetChild(i);
                     if (c.name == "EditHit" || c.name == "ResizeHandle") Destroy(c.gameObject);
+                    else if (c.name == "FitBounds") Destroy(c.gameObject);
                 }
             }
-            _hits.Clear(); _handle = null;
+            _hits.Clear(); _handle = null; _bounds.Clear();
         }
 
         internal void Select(string id)
@@ -793,6 +845,10 @@ namespace WarningEditor
             foreach (var kv in _hits)
                 if (kv.Value != null)
                     kv.Value.color = kv.Key == id ? new Color(0.3f, 0.65f, 1f, 0.18f) : new Color(0.3f, 0.65f, 1f, 0.05f);
+            foreach (var kv in _chips)
+                if (kv.Value != null)
+                    kv.Value.color = kv.Key == id ? new Color(0.22f, 0.42f, 0.60f, 1f)
+                                                  : new Color(0.13f, 0.16f, 0.21f, 1f);
             BuildHandle();
             if (!_preview) BuildPanel();
             UpdateHandle();
@@ -915,10 +971,16 @@ namespace WarningEditor
 
             if (!Input.GetMouseButton(0)) HideGuides();
 
-            if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) &&
-                Input.GetKeyDown(KeyCode.Z))
+            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (ctrl && Input.GetKeyDown(KeyCode.Z))
             {
-                Undo();
+                if (shift) Redo(); else Undo();
+                return;
+            }
+            if (ctrl && Input.GetKeyDown(KeyCode.Y))
+            {
+                Redo();
                 return;
             }
 
@@ -1095,8 +1157,8 @@ namespace WarningEditor
             try
             {
                 string path = Plugin.ExportLayout();
-                _status = L.T("已导出: ", "Exported: ") + path;
-                Plugin.Log.LogInfo(_status);
+                _status = L.T("已导出 layout.json", "Exported layout.json");
+                Plugin.Log.LogInfo("导出路径: " + path);
             }
             catch (Exception e)
             {
@@ -1177,6 +1239,49 @@ namespace WarningEditor
             UpdateHandle();
         }
 
+        private void MoveLayer(int delta)
+        {
+            var e = FindElement(_selected);
+            if (e == null || e.parent == null) return;
+            int idx = e.GetSiblingIndex();
+            int target = Mathf.Clamp(idx + delta, 1, e.parent.childCount - 1);
+            if (target == idx) return;
+            PushUndo();
+            e.SetSiblingIndex(target);
+            _status = delta > 0 ? L.T("上移一层", "Moved up") : L.T("下移一层", "Moved down");
+            LogRect("图层", _selected);
+        }
+
+        private void ToggleBounds()
+        {
+            Plugin.CfgShowBounds.Value = !Plugin.CfgShowBounds.Value;
+            foreach (var v in _bounds)
+                if (v != null) v.gameObject.SetActive(Plugin.CfgShowBounds.Value);
+            _status = Plugin.CfgShowBounds.Value ? L.T("图片边框: 开", "Bounds: on") : L.T("图片边框: 关", "Bounds: off");
+        }
+
+        private void ShowLogo()
+        {
+            PushUndo();
+            Plugin.CfgLogoVisible.Value = true;
+            Plugin.ApplyLogoVisibility(_warning);
+            Rebuild();
+            Select("Logo");
+        }
+
+        private void Redo()
+        {
+            CommitToMemory();
+            if (_redo.Count == 0) { _status = L.T("没有可重做的操作", "Nothing to redo"); RefreshPanel(); return; }
+            var cur = Capture();
+            var s = _redo[_redo.Count - 1];
+            _redo.RemoveAt(_redo.Count - 1);
+            _undo.Add(cur);
+            ApplySnapshot(s, true);
+            _status = L.T("已重做", "Redone");
+            RefreshPanel();
+        }
+
         private void BringToFront()
         {
             var e = FindElement(_selected);
@@ -1253,6 +1358,16 @@ namespace WarningEditor
 
         private void DeleteSelected()
         {
+            if (_selected == "Logo")
+            {
+                PushUndo();
+                Plugin.CfgLogoVisible.Value = false;
+                Plugin.ApplyLogoVisibility(_warning);
+                Rebuild();
+                Select("Text");
+                _status = L.T("已隐藏 Logo", "Logo hidden");
+                return;
+            }
             if (IsImg(_selected)) DeleteImage();
             else if (IsTxt(_selected)) DeleteText();
         }

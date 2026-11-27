@@ -17,7 +17,7 @@
 - 顶部管理元素，左侧调整属性
 
 - 插件 GUID：`com.hope.cu.warningeditor`
-- 版本：**1.10.1**
+- 版本：**1.11.0**
 - 依赖：BepInEx 5（5.4.23.6 验证）
 - 目标：Casualties Unknown 1.0
 
