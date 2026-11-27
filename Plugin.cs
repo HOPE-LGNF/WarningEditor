@@ -18,7 +18,7 @@ namespace WarningEditor
     {
         public const string PluginGuid = "com.hope.cu.warningeditor";
         public const string PluginName = "Warning Editor";
-        public const string PluginVersion = "1.10.0";
+        public const string PluginVersion = "1.10.1";
 
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -122,7 +122,7 @@ namespace WarningEditor
 
             Harmony.CreateAndPatchAll(typeof(PreRunPatch), PluginGuid);
             Harmony.CreateAndPatchAll(typeof(SettingsRowPatch), PluginGuid);
-            Log.LogInfo("WarningEditor 1.10.0 loaded. images=" + ImagesDir);
+            Log.LogInfo("WarningEditor 1.10.1 loaded. images=" + ImagesDir);
             Log.LogInfo($"热键: {(CfgHotkeyCtrl.Value ? "Ctrl+" : "")}{(CfgHotkeyAlt.Value ? "Alt+" : "")}{(CfgHotkeyShift.Value ? "Shift+" : "")}{CfgHotkeyKey.Value}");
         }
 
@@ -305,16 +305,21 @@ namespace WarningEditor
             return e;
         }
 
+        /// <summary>返回序列前缀（含相对目录），不是序列则返回 null。</summary>
+        internal static string SequencePrefix(string rel)
+        {
+            if (string.IsNullOrEmpty(rel)) return null;
+            var m = Regex.Match(RelBase(rel), @"^(.*)[ _\-.](\d+)$");
+            return m.Success ? m.Groups[1].Value : null;
+        }
+
         /// <summary>把 name_0.png / name_1.png … 识别成序列，按编号排序加载。</summary>
         internal static Sprite[] LoadSequence(string firstName, out string[] files)
         {
             files = null;
             if (string.IsNullOrEmpty(firstName)) return null;
 
-            var baseName = RelBase(firstName);
-            var m = Regex.Match(baseName, @"^(.*)[ _\-.](\d+)$");
-            if (!m.Success) return null;
-            string prefix = m.Groups[1].Value;
+            string prefix = SequencePrefix(firstName);
             if (string.IsNullOrEmpty(prefix)) return null;
 
             var hits = new List<KeyValuePair<int, string>>();

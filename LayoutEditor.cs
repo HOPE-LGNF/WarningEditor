@@ -1303,7 +1303,13 @@ namespace WarningEditor
             PushUndo();
             string cur = Plugin.GetImgName(i).Value;
             int pos = Array.IndexOf(all, cur);
+            string curGroup = Plugin.SequencePrefix(cur);
             string next = all[(pos + 1 + all.Length) % all.Length];
+            for (int step = 1; step <= all.Length; step++)
+            {
+                var cand = all[(pos + step) % all.Length];
+                if (Plugin.SequencePrefix(cand) != curGroup || step == all.Length) { next = cand; break; }
+            }
             Plugin.GetImgName(i).Value = next;
 
             var e = FindElement(_selected);
